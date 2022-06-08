@@ -1,10 +1,8 @@
 ﻿using GoogleRecaptcha.Models;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
+using Newtonsoft.Json.Linq;
 using System.Net;
+using System.Net.Http;
 
 namespace GoogleRecaptcha.Controllers
 {
@@ -16,12 +14,36 @@ namespace GoogleRecaptcha.Controllers
         }
 
         [HttpPost]
-        public JsonResult ReCaptcha(string response)
+        public HttpStatusCode ReCaptcha(string response)
         {
+            if (!ReCaptchaPassed(response))
+            {
+                ModelState.AddModelError(string.Empty, "You failed the CAPTCHA.");
+                return HttpStatusCode.BadRequest;
+            }
+            return HttpStatusCode.OK;
+        }
+
+        private bool ReCaptchaPassed(string response)
+        {
+            HttpClient httpClient = new HttpClient();
             ReCaptchaData recaptcha = new ReCaptchaData();
-            string url = "https://www.google.com/recaptcha/api/siteverify?secret=" + recaptcha.SecretV2 + "&response=" + response;
-            recaptcha.Response = (new WebClient()).DownloadString(url);
-            return Json(recaptcha);
+
+            var res = httpClient.GetAsync($"https://www.google.com/recaptcha/api/siteverify?secret={recaptcha.SecretV2}&response={response}").Result;
+
+            if (res.StatusCode != HttpStatusCode.OK)
+            {
+                return false;
+            }
+            string JSONres = res.Content.ReadAsStringAsync().Result;
+            dynamic JSONdata = JObject.Parse(JSONres);
+
+            if (JSONdata.success != "true" || JSONdata.score <= 0.5m)
+            {
+                return false;
+            }
+
+            return true;
         }
     }
 }
