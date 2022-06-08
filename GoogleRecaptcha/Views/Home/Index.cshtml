@@ -1,0 +1,48 @@
+﻿
+<div id="dvCaptcha">
+</div>
+<input type="hidden" id="hfCaptcha" />
+<span id="rfvCaptcha" class="error" style="display:none">Captcha validation is required.</span>
+<br />
+<input type="button" id="btnSubmit" value="Submit" />
+
+@section Scripts {
+
+    <script type="text/javascript" src="https://www.google.com/recaptcha/api.js?onload=onloadCallback&render=explicit"
+            async defer></script>
+    <script type="text/javascript">
+        var onloadCallback = function () {
+            grecaptcha.render('dvCaptcha', {
+                'sitekey': '6Lc3tU8gAAAAAMSqwoQcc8jcoWvdQqXol_fuYuNQ',
+                'callback': function (response) {
+                    $.ajax({
+                        type: "POST",
+                        url: "/Home/ReCaptcha",
+                        data: { "response": response },
+                        success: function (r) {
+                            var captchaResponse = jQuery.parseJSON(r.response);
+                            if (captchaResponse.success) {
+                                $("#hfCaptcha").val(captchaResponse.success);
+                                $("#rfvCaptcha").hide();
+                            } else {
+                                $("#hfCaptcha").val("");
+                                $("#rfvCaptcha").show();
+                                var error = captchaResponse["error-codes"][0];
+                                $("#rfvCaptcha").html("RECaptcha error. " + error);
+                            }
+                        }
+                    });
+                }
+            });
+        };
+        $(function () {
+            $("#btnSubmit").click(function () {
+                $("#rfvCaptcha").hide();
+                if ($("#hfCaptcha").val() == "") {
+                    $("#rfvCaptcha").show();
+                }
+            });
+        });
+    </script>
+}
+
